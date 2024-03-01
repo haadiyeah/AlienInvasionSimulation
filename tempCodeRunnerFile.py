@@ -110,47 +110,37 @@ bfs(graph, 1000)
 
 
 
+
 def save_cities(graph, start_city_name):
-    # initialization for dijkstra
-    queue = [(0, start_city_name)] #initial cost and name of source
-    costs = {city_name: float('inf') for city_name in graph.cities} #set all costs to infinity except starting city
-    parents = {city_name: None for city_name in graph.cities} #set predescessor to null
-    costs[start_city_name] = 0 #minimum cost of starting city =0
-    visited = set() # keep track of visited cities
+    # Create a priority queue and a dictionary to store the minimum number of weapons used to reach each city
+    queue = [(0, start_city_name)]
+    min_weapons = {city_name: float('inf') for city_name in graph.cities}
+    min_weapons[start_city_name] = 0
+    visited = set()
 
     while queue:
-        cost, city_name = heapq.heappop(queue)
+        weapons_used, city_name = heapq.heappop(queue)
         city = graph.cities[city_name]
 
         if city_name in visited:
             continue
         visited.add(city_name)
 
-        if city.alienPop > 0:
-            print(f"\nBATTLEEE!! Happening in {city.name}:")
-            print(f"  Initial alien population: {city.alienPop}")
-            city.alienPop = max(0, city.alienPop - city.weaponStockpile)
-            print(f"  Alien population after the battle: {city.alienPop}")
-            if city.alienPop > 0:
-                print(f"   WE NEED {city.alienPop} MORE REINFORCEMENTS!!")
-                if city.isMilitaryBase:
-                    city.alienPop=0
-                    print("  Nvm we were saved cuz we had milary base:)")
+        if city.isMilitaryBase:
+            weapons_used += city.weaponStockpile
 
-        #iterate over neighbours
-        for neighbor, distance in city.neighbors.items():
-            #----heuristic part ---- 
-            total_cost = cost + distance
-            #calculate alien to civilian ratio
-            ratio = neighbor.alienPop / neighbor.civilianPop if neighbor.civilianPop > 0 else float('inf') #error handling
+        # If this path uses fewer weapons than the current minimum, update the minimum
+        if weapons_used < min_weapons[city_name]:
+            min_weapons[city_name] = weapons_used
 
-            if neighbor.name not in visited and (total_cost < costs[neighbor.name] or ratio > costs[neighbor.name] / neighbor.civilianPop):
-                costs[neighbor.name] = total_cost
-                parents[neighbor.name] = city_name
-                heapq.heappush(queue, (total_cost, neighbor.name))
+            # Add the city's neighbors to the queue
+            for neighbor, distance in city.neighbors.items():
+                total_weapons = weapons_used + distance  # The cost of the path is the number of weapons used plus the distance
+                if neighbor.name not in visited:
+                    heapq.heappush(queue, (total_weapons, neighbor.name))
 
-    return costs, parents
+    return min_weapons
 
-costs, parents = save_cities(graph, "Cairo")
-
-#idea = aliens should start killing civilians too
+min_weapons = save_cities(graph, "Cairo")
+for city_name, weapons in min_weapons.items():
+    print(f"The minimum number of weapons to save {city_name} is {weapons}")
