@@ -73,7 +73,6 @@ def bfs(graph, total_aliens, source_city):
     while (len(frontier)!=0): 
         explore=frontier.popleft()
         explored.add(explore)
-        print(explore.name)
         # no. of aliens to leave behind (2% - 5% of the current population)
         alienQuota=0
         while(alienQuota == 0): 
@@ -112,12 +111,11 @@ def calcHeuristics(city, inventoryExtra):
     #select path that utilizes minimum weapons while killing max or all aliens 
     weaponsUtilized = city.alienPop / 3
     ratio = city.alienPop/ city.civilianPop
+    
     if weaponsUtilized > city.weaponStockpile :
         return float ("inf"), float("inf")
     else : 
-        inventoryExtra = city.weaponStockpile - weaponsUtilized
-        return weaponsUtilized, ratio
-    
+        return weaponsUtilized, ratio    
     
 def save_cities(graph, start_city):
     queue = [(0, start_city)]
@@ -131,30 +129,28 @@ def save_cities(graph, start_city):
         city = graph.cities[city_name]
         if goalTest(city):
                 print ('Final Battle going on in Alexandria ! ')
-                return costs, parents, visited
-                
-            
+                return costs, parents, visited  
+         
         if city_name in visited:
             continue
         visited.add(city_name)
-        print ("cost: ", cost, " City ", city_name)
         if city.alienPop > 0:
             print(f"\nBATTLEEE!! Happening in {city.name}:")
             print("We have ", city.weaponStockpile, " weapons here")
             print(f"  Initial alien population: {city.alienPop}")
-            city.alienPop = max(0, city.alienPop - (city.weaponStockpile*2))
+            city.alienPop = max(0, city.alienPop - (city.weaponStockpile*3))
             print(f"  Alien population after the battle: {city.alienPop}")
             if city.alienPop > 0:
-                print(f"   WE NEED {city.alienPop/2} MORE REINFORCEMENTS!!")
+                print(f"   WE NEED {city.alienPop/3} MORE REINFORCEMENTS!!")
                 if city.isMilitaryBase:
                     city.alienPop=0
                     print("  Nvm we were saved cuz we had milary base:)")
         for neighbor, distance in city. neighbors.items():
             #heuristic 
             weaponsUtilized, ratio = calcHeuristics(neighbor, inventoryExta)
-            total_cost= cost + distance + weaponsUtilized + ratio # h(n) + g(n)
-          
-            
+            total_cost= cost + distance + weaponsUtilized - ratio # h(n) + g(n)
+            if (goalTest(neighbor)) :
+                total_cost= cost + distance #h(n) should be 0 at goal
             if neighbor.name not in visited and total_cost < costs[neighbor.name]:
                 costs[neighbor.name] = total_cost
                 parents[neighbor.name] = city_name
@@ -166,7 +162,7 @@ def save_cities(graph, start_city):
 
 def runSimulation(graph, start_city):
     print("!---------------------ALERT------------------------!")
-    print("~~~~~~~Alien ships spotted!!!~~~~~~")
+    print("~~~~~~~~~~~~~~~Alien ships spotted!!!~~~~~~~~~~~~~~~")
     numLocations= random.randint(2, 5)
     spawnLoc={}
     for i in range (numLocations):
@@ -186,27 +182,6 @@ def runSimulation(graph, start_city):
     
 runSimulation(graph, random.choice(list(graph.cities.values())))
 
-#---------------------------------------------------------------------------
-
-# # def get_Reinforcements(city_name, weaponNum, graph):
-# #     for i in range(math.ceil(weaponNum // 5)):
-# #         print("Transporting 5 weapons to ", city_name)
-# #         time.sleep(1)
-# #         graph.cities[city_name].weaponStockpile+=5
-# #         print (city_name, " now has ", graph.cities[city_name].weaponStockpile, " weapons")
-    
-
-# # threads=[]
-
-# # def calcHeuristics(city):
-# #     #assuming one weapon can kill three aliens
-# #     #select path that utilizes minimum weapons while killing max or all aliens 
-# #     weaponsRem = city.weaponStockpile - (city.alienPop/3)
-# #     ratio = city.alienPop/ city.civilianPop
-# #     if weaponsRem < 0 :
-# #         return float ("inf"), float("inf")
-# #     else : 
-# #         return weaponsRem, ratio
-    
 
 # #idea = aliens should start killing civilians too
+# #idea = accumulate all weapons 
