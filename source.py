@@ -77,19 +77,26 @@ def bfs(graph, total_aliens, source_city):
     frontier.append(source_city)
 
     while (len(frontier)!=0): 
+        
         explore=frontier.popleft()
         explored.add(explore)
         # no. of aliens to leave behind (2% - 5% of the current population)
         alienQuota=0
         while(alienQuota == 0): 
-            lower_bound = int(explore.alienPop * 0.02)
-            upper_bound = int(explore.alienPop * 0.05)
+            lowerBoundQuota=0.02
+            upperBoundQuota=0.05
+            lower_bound=0
+            upper_bound=0
+            while (lower_bound==upper_bound):
+                lower_bound = int(explore.alienPop * upperBoundQuota)
+                upper_bound = int(explore.alienPop * lowerBoundQuota)
+                upperBoundQuota += 0.1
+                lowerBoundQuota+=0.1
             if lower_bound > upper_bound:
                 lower_bound, upper_bound = upper_bound, lower_bound #swap incase of invalid value
             
-            if lower_bound == 0 and upper_bound == 0:
-                continue
-
+            while (lower_bound == upper_bound):
+                upper_bound = int(explore.alienPop * 0.1)
             alienQuota = random.randint(lower_bound, upper_bound) #randomly selecting alien quota
         
         #explore.alienPop -= alienQuota
@@ -248,9 +255,6 @@ def runSimulation(graph, start_city):
     print("!-----TROOPS HAVE STARTED MOVING TO SAVE THE WORLD-----!")
     print("Troops are starting to move from",start_city.name, "to Alexandria!")
     sequence, finalCity, parents = save_cities(graph, start_city.name)
-    # path = reconstruct_path(parents, start_city, finalCity)
-    # for p in path:
-    #     print (p, "->")
 
     print("Optimum sequence of cities visited:")
     print(" -> ".join(sequence)) #
