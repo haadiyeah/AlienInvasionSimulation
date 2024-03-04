@@ -32,7 +32,7 @@ def createGraph(cityNames):
                 break
         
         #assign some additional neighbors
-        for _ in range(random.randint(0, 4)):  # Assign 0-2 additional neighbors to each city
+        for _ in range(random.randint(0, 4)):  # Assign 0-4 additional neighbors to each city
             neighbor = random.choice(list(graph.cities.values()))
             if neighbor == city or neighbor in city.neighbors:  # Avoid self-loops and duplicate edges
                 continue
