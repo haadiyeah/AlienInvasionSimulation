@@ -143,19 +143,24 @@ def save_cities(graph, start_city):
     visited = set()
     inventoryExta = 0
     sequence = [] # to store the sequence of cities visited
-    last_city = None
+    alexandria = None
 
     while queue and not saveCitiesGoalTest():
         cost, city_name = heapq.heappop(queue)
+        city = graph.cities[city_name]
+
+        if(goalTest(city)):
+            alexandria=city
+            continue
         
         print(f"Distance travelled to reach {city_name}: {costs[city_name]}")
         if city_name in visited: 
             continue
-        city = graph.cities[city_name]
+
         visited.add(city_name)
         sequence.append(city_name) 
-        
-        last_city = city
+     
+
         if city.alienPop > 0:
             print(f"\nBATTLEEE!! Happening in {city.name}:")
             print("We have ", city.weaponStockpile, " weapons here")
@@ -184,7 +189,7 @@ def save_cities(graph, start_city):
                 parents[neighbor.name] = city_name
                 heapq.heappush(queue, (total_cost, neighbor.name))
             
-    return sequence, city, parents
+    return sequence,alexandria, parents
     
 def reconstruct_path(parents, start_city, end_city):
     path = [end_city.name]
@@ -192,6 +197,31 @@ def reconstruct_path(parents, start_city, end_city):
         path.append(parents[path[-1]])
     path.reverse()
     return path
+
+def finalBattle(finalCity):
+    print(f"== Location: {finalCity.name} ")
+    print(f"== Alien Pop: {finalCity.alienPop} ")
+    print(f"== Weapons: {finalCity.weaponStockpile} ")
+    print(f"== Civilian Pop: {finalCity.civilianPop} ")
+
+    round = 1
+    while finalCity.alienPop > 0 and finalCity.civilianPop > 0:
+        print(f"\nRound {round}:")
+        finalCity.alienPop = max(0, (finalCity.alienPop - finalCity.weaponStockpile * WEAPON_STRENGTH))
+        print(f"After the battle: Remaining aliens are {finalCity.alienPop}")
+
+        if finalCity.alienPop > 0:
+            finalCity.civilianPop = max(0, (finalCity.civilianPop - finalCity.alienPop))
+            print(f"After the alien attack: Remaining civilians are {finalCity.civilianPop}")
+
+        round += 1
+
+    if finalCity.alienPop == 0:
+        print("\n* * * CONGRATS! * * * \n The civilians have won.")
+    
+    else: 
+        if finalCity.civilianPop == 0:
+            print("\n* * * DAMN! * * * \n The Aliens have won.")
 
 
 def runSimulation(graph, start_city):
@@ -218,18 +248,16 @@ def runSimulation(graph, start_city):
     print("!-----TROOPS HAVE STARTED MOVING TO SAVE THE WORLD-----!")
     print("Troops are starting to move from",start_city.name, "to Alexandria!")
     sequence, finalCity, parents = save_cities(graph, start_city.name)
-    path = reconstruct_path(parents, start_city, finalCity)
-    for p in path:
-        print (p, "->")
+    # path = reconstruct_path(parents, start_city, finalCity)
+    # for p in path:
+    #     print (p, "->")
 
     print("Optimum sequence of cities visited:")
-    print(" -> ".join(sequence)) # TWO WAYS FOR THIS, DISCARD ONE AND KEEP ONE 
+    print(" -> ".join(sequence)) #
 
     print("!---------------------ALERT------------------------!")
     print("!-----FINAL BATTLE HAS BEGUN IN ALEXANDRIA-----!")
-    print(f"== Location: {finalCity.name} ")
-    print(f"== Alien Pop: {finalCity.alienPop} ")
-    print(f"== Weapons: {finalCity.weaponStockpile} ")
+    finalBattle(finalCity)
     
 runSimulation(graph, random.choice(list(graph.cities.values())))
 
