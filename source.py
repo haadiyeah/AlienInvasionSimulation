@@ -149,14 +149,16 @@ def save_cities(graph, start_city):
     while queue and not saveCitiesGoalTest():
         cost, city_name = heapq.heappop(queue)
         city = graph.cities[city_name]
+        
+        if city_name in visited:
+            continue
+        visited.add(city_name)
+
         sequence.append(city_name) 
         last_city = city
         
         print(f"Distance travelled to reach {city_name}: {costs[city_name]}")
 
-        if city_name in visited:
-            continue
-        visited.add(city_name)
         
         if city.alienPop > 0:
             print(f"\nBATTLEEE!! Happening in {city.name}:")
@@ -223,6 +225,7 @@ def runSimulation(graph, start_city):
     path = reconstruct_path(parents, start_city, finalCity)
     for p in path:
         print (p, "->")
+
     print("Optimum sequence of cities visited:")
     print(" -> ".join(sequence)) # TWO WAYS FOR THIS, DISCARD ONE AND KEEP ONE 
 
