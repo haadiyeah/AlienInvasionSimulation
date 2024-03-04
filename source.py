@@ -115,8 +115,8 @@ def bfs(graph, total_aliens, source_city):
                 print(aliensToDisperse,"ALIENS HAVE REACHED ALEXANDRIA!!")
                 print(f"(!) There are now {neighbor.alienPop} aliens in Alexandria")
                 return True
-
-            frontier.append(neighbor)
+            if neighbor not in explored:
+                frontier.append(neighbor)
 
             #print(f">> aliens in {explore.name} : {explore.alienPop} ")
         
@@ -151,13 +151,9 @@ def save_cities(graph, start_city):
         city = graph.cities[city_name]
         sequence.append(city_name) 
         last_city = city
-
+        
         print(f"Distance travelled to reach {city_name}: {costs[city_name]}")
 
-        # if goalTest(city):
-        #         print ('Final Battle going on in Alexandria ! ')
-        #         return costs, parents, visited, city
-         
         if city_name in visited:
             continue
         visited.add(city_name)
@@ -185,21 +181,25 @@ def save_cities(graph, start_city):
             #heuristic 
             weaponsUtilized, ratio = calcHeuristics(neighbor, inventoryExta)
             total_cost= cost + distance + weaponsUtilized - ratio #h(n) + g(n)
-            # if (goalTest(neighbor)) :
-            #     total_cost= cost + distance #h(n) should be 0 at goal
             if neighbor.name not in visited and total_cost < costs[neighbor.name]:
                 costs[neighbor.name] = total_cost
                 parents[neighbor.name] = city_name
                 heapq.heappush(queue, (total_cost, neighbor.name))
             
-    return sequence, city
+    return sequence, city, parents
     
+def reconstruct_path(parents, start_city, end_city):
+    path = [end_city.name]
+    while path[-1] != start_city.name:
+        path.append(parents[path[-1]])
+    path.reverse()
+    return path
 
 
 def runSimulation(graph, start_city):
     global totalAliensInWorld  #global scope
     print("!---------------------ALERT------------------------!")
-    print("~~~~~~~~~~~~~~~Alien ships spotted!!!~~~~~~~~~~~~~~~")
+    print("~~~~~~~~~~~~~~~ALIEN SHIPS SPOTTED!!!~~~~~~~~~~~~~~~")
     numLocations= random.randint(2, 5)
     spawnLoc={}
     for i in range (numLocations):
@@ -219,10 +219,12 @@ def runSimulation(graph, start_city):
     print("!---------------------ALERT------------------------!")
     print("!-----TROOPS HAVE STARTED MOVING TO SAVE THE WORLD-----!")
     print("Troops are starting to move from",start_city.name, "to Alexandria!")
-    sequence, finalCity = save_cities(graph, start_city.name)
-   
+    sequence, finalCity, parents = save_cities(graph, start_city.name)
+    path = reconstruct_path(parents, start_city, finalCity)
+    for p in path:
+        print (p, "->")
     print("Optimum sequence of cities visited:")
-    print(" -> ".join(sequence))
+    print(" -> ".join(sequence)) # TWO WAYS FOR THIS, DISCARD ONE AND KEEP ONE 
 
     print("!---------------------ALERT------------------------!")
     print("!-----FINAL BATTLE HAS BEGUN IN ALEXANDRIA-----!")
