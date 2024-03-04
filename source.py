@@ -2,10 +2,8 @@ import random
 from collections import deque
 from city import City
 from graph import Graph
-import time
 import heapq
 import math
-import concurrent.futures
 
 WEAPON_STRENGTH = 3 #Number of aliens that can be killed by 1 weapon 
 cityNames = ["Cairo",  "Luxor", "Aswan", "Port Said", "Suez", "Ismailia", "Faiyum", "Mansoura", "Tanta", "Hurghada", "Petra", "Dahab", "Amman", "Beirut", "Jerusalem",  "Damascus", "Baghdad", "Riyadh", "Ankara", "Aleppo", "Dubai", "Abu Dhabi", "Doha", "Muscat", "Kuwait City", "Manama", "Salalah", "Istanbul", "Tehran", "Alexandria"]    
@@ -42,7 +40,6 @@ def createGraph(cityNames):
 
 graph = createGraph(cityNames)
 
-#printGraph(graph)
 def printGraph(graph):
     print(f"Total number of cities: {len(graph.cities)}")
     for city in graph.cities.values():
@@ -99,7 +96,6 @@ def bfs(graph, total_aliens, source_city):
                 upper_bound = int(explore.alienPop * 0.1)
             alienQuota = random.randint(lower_bound, upper_bound) #randomly selecting alien quota
         
-        #explore.alienPop -= alienQuota
         totalDispersable = explore.alienPop - alienQuota
 
         # eligible to invade 
@@ -124,8 +120,6 @@ def bfs(graph, total_aliens, source_city):
                 return True
             if neighbor not in explored:
                 frontier.append(neighbor)
-
-            #print(f">> aliens in {explore.name} : {explore.alienPop} ")
         
         print(f"{explore.alienPop} aliens have remained in {explore.name}")
 
@@ -160,7 +154,7 @@ def save_cities(graph, start_city):
             alexandria=city
             continue
         
-        print(f"Distance travelled to reach {city_name}: {costs[city_name]}")
+        #print(f"Distance travelled to reach {city_name}: {costs[city_name]}")
         if city_name in visited: 
             continue
 
@@ -186,7 +180,7 @@ def save_cities(graph, start_city):
                 print(f"   WE NEED {math.ceil(city.alienPop/WEAPON_STRENGTH)} MORE REINFORCEMENTS!!")
                 if city.isMilitaryBase:
                     city.alienPop=0
-                    print("Nvm we were saved cuz we had milary base:)")
+                    print("   Nvm we were saved cuz we had milary base:)")
         for neighbor, distance in city. neighbors.items():
             #heuristic 
             weaponsNeeded, ratio = calcHeuristics(neighbor, inventoryExta)
@@ -246,25 +240,21 @@ def runSimulation(graph, start_city):
                 totalAliensInWorld += spawnLoc[loc]
                 break
    
-    print("!---------------------ALERT------------------------!")
+    print("\n!---------------------ALERT------------------------!")
     print("!-----ALIENS HAVE STARTED MOVING TO ALEXANDRIA-----!")
     for city in spawnLoc:
         bfs(graph, spawnLoc[city], city)
     
-    print("!---------------------ALERT------------------------!")
+    print("\n!---------------------ALERT------------------------!")
     print("!-----TROOPS HAVE STARTED MOVING TO SAVE THE WORLD-----!")
     print("Troops are starting to move from",start_city.name, "to Alexandria!")
     sequence, finalCity, parents = save_cities(graph, start_city.name)
 
-    print("Optimum sequence of cities visited:")
+    print("\nOptimum sequence of cities visited:")
     print(" -> ".join(sequence)) #
 
-    print("!---------------------ALERT------------------------!")
+    print("\n!---------------------ALERT------------------------!")
     print("!-----FINAL BATTLE HAS BEGUN IN ALEXANDRIA-----!")
     finalBattle(finalCity)
     
 runSimulation(graph, random.choice(list(graph.cities.values())))
-
-
-# #idea = aliens should start killing civilians too
-# #idea = accumulate all weapons 
