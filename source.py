@@ -127,13 +127,12 @@ def bfs(graph, total_aliens, source_city):
 def calcHeuristics(city, inventoryExtra):
     #assuming one weapon can kill three aliens
     #select path that utilizes minimum weapons while killing max or all aliens 
-    weaponsUtilized = city.alienPop / WEAPON_STRENGTH
-    ratio = city.alienPop/ city.civilianPop
-    
-    if weaponsUtilized > city.weaponStockpile :
-        return float ("inf"), float("inf")
+    weaponsNeeded = city.alienPop / WEAPON_STRENGTH
+    ratio = city.alienPop / city.civilianPop
+    if weaponsNeeded > city.weaponStockpile :
+        return city.weaponStockpile, ratio
     else : 
-        return weaponsUtilized, ratio    
+        return weaponsNeeded, ratio    
     
 def save_cities(graph, start_city):
     global totalAliensInWorld  #global scope
@@ -148,18 +147,15 @@ def save_cities(graph, start_city):
 
     while queue and not saveCitiesGoalTest():
         cost, city_name = heapq.heappop(queue)
-        city = graph.cities[city_name]
-        
-        if city_name in visited:
-            continue
-        visited.add(city_name)
-
-        sequence.append(city_name) 
-        last_city = city
         
         print(f"Distance travelled to reach {city_name}: {costs[city_name]}")
-
+        if city_name in visited: 
+            continue
+        city = graph.cities[city_name]
+        visited.add(city_name)
+        sequence.append(city_name) 
         
+        last_city = city
         if city.alienPop > 0:
             print(f"\nBATTLEEE!! Happening in {city.name}:")
             print("We have ", city.weaponStockpile, " weapons here")
@@ -178,11 +174,11 @@ def save_cities(graph, start_city):
                 print(f"   WE NEED {math.ceil(city.alienPop/WEAPON_STRENGTH)} MORE REINFORCEMENTS!!")
                 if city.isMilitaryBase:
                     city.alienPop=0
-                    print("  Nvm we were saved cuz we had milary base:)")
+                    print("Nvm we were saved cuz we had milary base:)")
         for neighbor, distance in city. neighbors.items():
             #heuristic 
-            weaponsUtilized, ratio = calcHeuristics(neighbor, inventoryExta)
-            total_cost= cost + distance + weaponsUtilized - ratio #h(n) + g(n)
+            weaponsNeeded, ratio = calcHeuristics(neighbor, inventoryExta)
+            total_cost= cost + distance + weaponsNeeded - ratio #h(n) + g(n)
             if neighbor.name not in visited and total_cost < costs[neighbor.name]:
                 costs[neighbor.name] = total_cost
                 parents[neighbor.name] = city_name
