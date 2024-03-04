@@ -2,10 +2,10 @@ import random
 from collections import deque
 from city import City
 from graph import Graph
-import threading
 import time
 import heapq
 import math
+import concurrent.futures
 
 
 cityNames = ["Cairo",  "Luxor", "Aswan", "Port Said", "Suez", "Ismailia", "Faiyum", "Mansoura", "Tanta", "Hurghada", "Petra", "Dahab", "Amman", "Beirut", "Jerusalem",  "Damascus", "Baghdad", "Riyadh", "Ankara", "Aleppo", "Dubai", "Abu Dhabi", "Doha", "Muscat", "Kuwait City", "Manama", "Salalah", "Istanbul", "Tehran", "Alexandria"]    
@@ -31,13 +31,17 @@ def createGraph(cityNames):
                 break
 
         #assign some additional neighbors
-        for _ in range(random.randint(0, 2)):  # Assign 0-2 additional neighbors to each city
+        for _ in range(random.randint(0, 4)):  # Assign 0-2 additional neighbors to each city
             neighbor = random.choice(list(graph.cities.values()))
             if neighbor == city or neighbor in city.neighbors:  # Avoid self-loops and duplicate edges
                 continue
             distance = random.randint(10, 100)
             graph.addEdge(city.name, neighbor.name, distance)  #bidirectional edge
-
+    # backbone_cities = random.sample(list(graph.cities.values()), len(cityNames) // 2)
+    # for city in backbone_cities:
+    #     if city.name != "Alexandria":
+    #         distance = random.randint(10, 100)
+    #         graph.addEdge(city.name, "Alexandria", distance)
     return graph
 
 graph = createGraph(cityNames)
@@ -61,9 +65,8 @@ def goalTest(node):
     return False
 
 #BFS On graph to allocate alien quota etc. 
-def bfs(graph, total_aliens):
+def bfs(graph, total_aliens, source_city):
     # Random source city
-    source_city = random.choice(list(graph.cities.values()))
     source_city.alienArrival(total_aliens) # Update alien population
     print(f"{total_aliens} aliens have landed in {source_city.name}")
 
@@ -108,19 +111,19 @@ def bfs(graph, total_aliens):
         
         print(f"{explore.alienPop} aliens have remained in {explore.name}")
 #total aliens=100
-bfs(graph, 1000)
+# bfs(graph, 1000)
 
 
-
-def calcHeuristics(city):
+def calcHeuristics(city, inventoryExtra):
     #assuming one weapon can kill three aliens
     #select path that utilizes minimum weapons while killing max or all aliens 
-    weaponsRem = city.weaponStockpile - (city.alienPop/3)
+    weaponsUtilized = city.alienPop / 3
     ratio = city.alienPop/ city.civilianPop
-    if weaponsRem < 0 :
+    if weaponsUtilized > city.weaponStockpile :
         return float ("inf"), float("inf")
     else : 
-        return weaponsRem, ratio
+        inventoryExtra = city.weaponStockpile - weaponsUtilized
+        return weaponsUtilized, ratio
     
     
 def save_cities(graph, start_city):
@@ -129,13 +132,14 @@ def save_cities(graph, start_city):
     parents = {city_name: None for city_name in graph.cities} #set predescessor to null
     costs[start_city] = 0
     visited = set()
-    
+    inventoryExta=0
     while queue:
         cost, city_name = heapq.heappop(queue)
         city = graph.cities[city_name]
-        if (goalTest(city)) : 
+        if goalTest(city):
                 print ('Final Battle going on in Alexandria ! ')
                 return costs, parents, visited
+                
             
         if city_name in visited:
             continue
@@ -154,80 +158,62 @@ def save_cities(graph, start_city):
                     print("  Nvm we were saved cuz we had milary base:)")
         for neighbor, distance in city. neighbors.items():
             #heuristic 
-            weaponsRem, ratio = calcHeuristics(neighbor)
-            total_cost= cost + distance + weaponsRem + ratio # h(n) + g(n)
-           
+            weaponsUtilized, ratio = calcHeuristics(neighbor, inventoryExta)
+            total_cost= cost + distance + weaponsUtilized + ratio # h(n) + g(n)
+          
+            
             if neighbor.name not in visited and total_cost < costs[neighbor.name]:
                 costs[neighbor.name] = total_cost
                 parents[neighbor.name] = city_name
                 heapq.heappush(queue, (total_cost, neighbor.name))
-
-costs, parents, visited = save_cities(graph, "Cairo")    
-
-for p in visited : 
-        print (p, " - > ")
-
-
-
-# def get_Reinforcements(city_name, weaponNum, graph):
-#     for i in range(math.ceil(weaponNum // 5)):
-#         print("Transporting 5 weapons to ", city_name)
-#         time.sleep(1)
-#         graph.cities[city_name].weaponStockpile+=5
-#         print (city_name, " now has ", graph.cities[city_name].weaponStockpile, " weapons")
+            
+    return None, None, None
     
 
-# threads=[]
 
-# def calcHeuristics(city):
-#     #assuming one weapon can kill three aliens
-#     #select path that utilizes minimum weapons while killing max or all aliens 
-#     weaponsRem = city.weaponStockpile - (city.alienPop/3)
-#     ratio = city.alienPop/ city.civilianPop
-#     if weaponsRem < 0 :
-#         return float ("inf"), float("inf")
-#     else : 
-#         return weaponsRem, ratio
+def runSimulation(graph, start_city):
+    print("!---------------------ALERT------------------------!")
+    print("~~~~~~~Alien ships spotted!!!~~~~~~")
+    numLocations= random.randint(2, 10)
+    spawnLoc={}
+    for i in range (numLocations):
+        while True : 
+            loc=random.choice(list(graph.cities.values())) #select 5 random locations from the given list where aliens will spawn 
+            if loc not in spawnLoc :
+                spawnLoc[loc]=random.randint(5,5000)
+                print(spawnLoc[loc], "Aliens landed in ", loc.name)
+                break
+    print("!---------------------ALERT------------------------!")
+    print("!-----ALIENS HAVE STARTED MOVING TO ALEXANDRIA-----!")
+    for city in spawnLoc:
+        bfs(graph, spawnLoc[city], city)
+    print("Troops are starting to move from",start_city.name, "to Alexandria!")
+    costs, parents, visited = save_cities(graph, start_city.name)
     
     
-# def save_cities(graph, start_city):
-#     queue = [(0, start_city)]
-#     costs = {city_name: float('inf') for city_name in graph.cities} #set all costs to infinity except starting city
-#     parents = {city_name: None for city_name in graph.cities} #set predescessor to null
-#     costs[start_city] = 0
-#     visited = set()
+runSimulation(graph, random.choice(list(graph.cities.values())))
+
+#---------------------------------------------------------------------------
+
+# # def get_Reinforcements(city_name, weaponNum, graph):
+# #     for i in range(math.ceil(weaponNum // 5)):
+# #         print("Transporting 5 weapons to ", city_name)
+# #         time.sleep(1)
+# #         graph.cities[city_name].weaponStockpile+=5
+# #         print (city_name, " now has ", graph.cities[city_name].weaponStockpile, " weapons")
     
-#     while queue:
-#         cost, city_name = heapq.heappop(queue)
-#         city = graph.cities[city_name]
-#         if city_name in visited:
-#             continue
-#         visited.add(city_name)
-#         print ("cost: ", cost, " City ", city_name)
-#         if city.alienPop > 0:
-#             print(f"\nBATTLEEE!! Happening in {city.name}:")
-#             print("We have ", city.weaponStockpile, " weapons here")
-#             print(f"  Initial alien population: {city.alienPop}")
-#             city.alienPop = max(0, city.alienPop - (city.weaponStockpile*2))
-#             print(f"  Alien population after the battle: {city.alienPop}")
-#             if city.alienPop > 0:
-#                 print(f"   WE NEED {city.alienPop/2} MORE REINFORCEMENTS!!")
-#                 if city.isMilitaryBase:
-#                     city.alienPop=0
-#                     print("  Nvm we were saved cuz we had milary base:)")
-                
-#         for neighbor, distance in city. neighbors.items():
-#             #heuristic 
-#             weaponsRem, ratio = calcHeuristics(neighbor)
-#             total_cost= cost + distance + weaponsRem + ratio # h(n) + g(n)
-#             if neighbor.name not in visited and total_cost < costs[neighbor.name]:
-#                 costs[neighbor.name] = total_cost
-#                 parents[neighbor.name] = city_name
-#                 heapq.heappush(queue, (total_cost, neighbor.name))
-#     return costs, parents
 
-# costs, parents = save_cities(graph, "Cairo")
+# # threads=[]
 
-# for t in threads:
-#     t.join()
-#idea = aliens should start killing civilians too
+# # def calcHeuristics(city):
+# #     #assuming one weapon can kill three aliens
+# #     #select path that utilizes minimum weapons while killing max or all aliens 
+# #     weaponsRem = city.weaponStockpile - (city.alienPop/3)
+# #     ratio = city.alienPop/ city.civilianPop
+# #     if weaponsRem < 0 :
+# #         return float ("inf"), float("inf")
+# #     else : 
+# #         return weaponsRem, ratio
+    
+
+# #idea = aliens should start killing civilians too
