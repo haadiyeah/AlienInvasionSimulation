@@ -7,8 +7,9 @@ import heapq
 import math
 import concurrent.futures
 
-
+WEAPON_STRENGTH = 3 #Number of aliens that can be killed by 1 weapon 
 cityNames = ["Cairo",  "Luxor", "Aswan", "Port Said", "Suez", "Ismailia", "Faiyum", "Mansoura", "Tanta", "Hurghada", "Petra", "Dahab", "Amman", "Beirut", "Jerusalem",  "Damascus", "Baghdad", "Riyadh", "Ankara", "Aleppo", "Dubai", "Abu Dhabi", "Doha", "Muscat", "Kuwait City", "Manama", "Salalah", "Istanbul", "Tehran", "Alexandria"]    
+totalAliensInWorld=0
 
 def createGraph(cityNames):
     graph = Graph()
@@ -56,6 +57,11 @@ def goalTest(node):
         return True
     return False
 
+def saveCitiesGoalTest():
+    if totalAliensInWorld == 0:
+        return True
+    return False
+
 #BFS On graph to allocate alien quota etc. 
 def bfs(graph, total_aliens, source_city):
     # Random source city
@@ -76,7 +82,15 @@ def bfs(graph, total_aliens, source_city):
         # no. of aliens to leave behind (2% - 5% of the current population)
         alienQuota=0
         while(alienQuota == 0): 
-            alienQuota = random.randint(int(explore.alienPop * 0.02), int(explore.alienPop * 0.05))
+            lower_bound = int(explore.alienPop * 0.02)
+            upper_bound = int(explore.alienPop * 0.05)
+            if lower_bound > upper_bound:
+                lower_bound, upper_bound = upper_bound, lower_bound #swap incase of invalid value
+            
+            if lower_bound == 0 and upper_bound == 0:
+                continue
+
+            alienQuota = random.randint(lower_bound, upper_bound) #randomly selecting alien quota
         
         #explore.alienPop -= alienQuota
         totalDispersable = explore.alienPop - alienQuota
@@ -86,6 +100,7 @@ def bfs(graph, total_aliens, source_city):
 
         #aliens get divided in neighboring cities
         aliensToDisperse = totalDispersable // len(neighborsToInvade) if neighborsToInvade else 0
+
 
         for neighbor in neighborsToInvade:
             #  move to the neighboring city
@@ -98,9 +113,12 @@ def bfs(graph, total_aliens, source_city):
                 neighbor.alienArrival(aliensToDisperse)
                 explore.alienPop-=aliensToDisperse
                 print(aliensToDisperse,"ALIENS HAVE REACHED ALEXANDRIA!!")
+                print(f"(!) There are now {neighbor.alienPop} aliens in Alexandria")
                 return True
 
             frontier.append(neighbor)
+
+            #print(f">> aliens in {explore.name} : {explore.alienPop} ")
         
         print(f"{explore.alienPop} aliens have remained in {explore.name}")
 
@@ -109,7 +127,7 @@ def bfs(graph, total_aliens, source_city):
 def calcHeuristics(city, inventoryExtra):
     #assuming one weapon can kill three aliens
     #select path that utilizes minimum weapons while killing max or all aliens 
-    weaponsUtilized = city.alienPop / 3
+    weaponsUtilized = city.alienPop / WEAPON_STRENGTH
     ratio = city.alienPop/ city.civilianPop
     
     if weaponsUtilized > city.weaponStockpile :
@@ -118,67 +136,99 @@ def calcHeuristics(city, inventoryExtra):
         return weaponsUtilized, ratio    
     
 def save_cities(graph, start_city):
+    global totalAliensInWorld  #global scope
     queue = [(0, start_city)]
     costs = {city_name: float('inf') for city_name in graph.cities} #set all costs to infinity except starting city
     parents = {city_name: None for city_name in graph.cities} #set predescessor to null
     costs[start_city] = 0
     visited = set()
-    inventoryExta=0
-    while queue:
+    inventoryExta = 0
+    sequence = [] # to store the sequence of cities visited
+    last_city = None
+
+    while queue and not saveCitiesGoalTest():
         cost, city_name = heapq.heappop(queue)
         city = graph.cities[city_name]
-        if goalTest(city):
-                print ('Final Battle going on in Alexandria ! ')
-                return costs, parents, visited  
+        sequence.append(city_name) 
+        last_city = city
+
+        print(f"Distance travelled to reach {city_name}: {costs[city_name]}")
+
+        # if goalTest(city):
+        #         print ('Final Battle going on in Alexandria ! ')
+        #         return costs, parents, visited, city
          
         if city_name in visited:
             continue
         visited.add(city_name)
+        
         if city.alienPop > 0:
             print(f"\nBATTLEEE!! Happening in {city.name}:")
             print("We have ", city.weaponStockpile, " weapons here")
             print(f"  Initial alien population: {city.alienPop}")
-            city.alienPop = max(0, city.alienPop - (city.weaponStockpile*3))
+            
+            defeatedAliens = (city.weaponStockpile*WEAPON_STRENGTH)
+            if defeatedAliens > city.alienPop:
+                defeatedAliens = city.alienPop #there were more weapons than needed, so all aliens died.
+
+            city.alienPop = city.alienPop - defeatedAliens
+            totalAliensInWorld -= defeatedAliens
+            
             print(f"  Alien population after the battle: {city.alienPop}")
+
             if city.alienPop > 0:
-                print(f"   WE NEED {city.alienPop/3} MORE REINFORCEMENTS!!")
+                print(f"   WE NEED {math.ceil(city.alienPop/WEAPON_STRENGTH)} MORE REINFORCEMENTS!!")
                 if city.isMilitaryBase:
                     city.alienPop=0
                     print("  Nvm we were saved cuz we had milary base:)")
         for neighbor, distance in city. neighbors.items():
             #heuristic 
             weaponsUtilized, ratio = calcHeuristics(neighbor, inventoryExta)
-            total_cost= cost + distance + weaponsUtilized - ratio # h(n) + g(n)
-            if (goalTest(neighbor)) :
-                total_cost= cost + distance #h(n) should be 0 at goal
+            total_cost= cost + distance + weaponsUtilized - ratio #h(n) + g(n)
+            # if (goalTest(neighbor)) :
+            #     total_cost= cost + distance #h(n) should be 0 at goal
             if neighbor.name not in visited and total_cost < costs[neighbor.name]:
                 costs[neighbor.name] = total_cost
                 parents[neighbor.name] = city_name
                 heapq.heappush(queue, (total_cost, neighbor.name))
             
-    return None, None, None
+    return sequence, city
     
 
 
 def runSimulation(graph, start_city):
+    global totalAliensInWorld  #global scope
     print("!---------------------ALERT------------------------!")
     print("~~~~~~~~~~~~~~~Alien ships spotted!!!~~~~~~~~~~~~~~~")
     numLocations= random.randint(2, 5)
     spawnLoc={}
     for i in range (numLocations):
         while True : 
-            loc=random.choice(list(graph.cities.values())) #select 5 random locations from the given list where aliens will spawn 
+            loc=random.choice(list(graph.cities.values())) #select  random locations from the given list where aliens will spawn 
             if loc not in spawnLoc :
                 spawnLoc[loc]=random.randint(5,2000)
                 print(spawnLoc[loc], "Aliens landed in ", loc.name)
+                totalAliensInWorld += spawnLoc[loc]
                 break
+   
     print("!---------------------ALERT------------------------!")
     print("!-----ALIENS HAVE STARTED MOVING TO ALEXANDRIA-----!")
     for city in spawnLoc:
         bfs(graph, spawnLoc[city], city)
-    print("Troops are starting to move from",start_city.name, "to Alexandria!")
-    costs, parents, visited = save_cities(graph, start_city.name)
     
+    print("!---------------------ALERT------------------------!")
+    print("!-----TROOPS HAVE STARTED MOVING TO SAVE THE WORLD-----!")
+    print("Troops are starting to move from",start_city.name, "to Alexandria!")
+    sequence, finalCity = save_cities(graph, start_city.name)
+   
+    print("Optimum sequence of cities visited:")
+    print(" -> ".join(sequence))
+
+    print("!---------------------ALERT------------------------!")
+    print("!-----FINAL BATTLE HAS BEGUN IN ALEXANDRIA-----!")
+    print(f"== Location: {finalCity.name} ")
+    print(f"== Alien Pop: {finalCity.alienPop} ")
+    print(f"== Weapons: {finalCity.weaponStockpile} ")
     
 runSimulation(graph, random.choice(list(graph.cities.values())))
 
