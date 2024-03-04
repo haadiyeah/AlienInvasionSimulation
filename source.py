@@ -20,7 +20,7 @@ def createGraph(cityNames):
 
         city = City(name, 0, civilianPop, isMilitaryBase, weaponStockpile)
         graph.addCity(city)
-
+        
     # assign random neighbors to each city
     for city in graph.cities.values():
         while True: #ensure atleast one neighbour is added
@@ -29,7 +29,7 @@ def createGraph(cityNames):
                 distance = random.randint(10, 100)
                 graph.addEdge(city.name, neighbor.name, distance)  #bidirectional edge
                 break
-
+        
         #assign some additional neighbors
         for _ in range(random.randint(0, 4)):  # Assign 0-2 additional neighbors to each city
             neighbor = random.choice(list(graph.cities.values()))
@@ -37,16 +37,11 @@ def createGraph(cityNames):
                 continue
             distance = random.randint(10, 100)
             graph.addEdge(city.name, neighbor.name, distance)  #bidirectional edge
-    # backbone_cities = random.sample(list(graph.cities.values()), len(cityNames) // 2)
-    # for city in backbone_cities:
-    #     if city.name != "Alexandria":
-    #         distance = random.randint(10, 100)
-    #         graph.addEdge(city.name, "Alexandria", distance)
     return graph
 
 graph = createGraph(cityNames)
 
-
+#printGraph(graph)
 def printGraph(graph):
     print(f"Total number of cities: {len(graph.cities)}")
     for city in graph.cities.values():
@@ -54,9 +49,6 @@ def printGraph(graph):
         for neighbor, distance in city.neighbors.items():
             print(f"  {neighbor.name} with distance {distance}")
             
-
-
-#printGraph(graph)
 
 # Goal Test to see if current node is Alexandria i.e. Goal Node
 def goalTest(node):
@@ -81,7 +73,7 @@ def bfs(graph, total_aliens, source_city):
     while (len(frontier)!=0): 
         explore=frontier.popleft()
         explored.add(explore)
-
+        print(explore.name)
         # no. of aliens to leave behind (2% - 5% of the current population)
         alienQuota=0
         while(alienQuota == 0): 
@@ -91,7 +83,7 @@ def bfs(graph, total_aliens, source_city):
         totalDispersable = explore.alienPop - alienQuota
 
         # eligible to invade 
-        neighborsToInvade = [neighbor for neighbor in explore.neighbors if neighbor not in frontier and neighbor not in explored and neighbor.alienPop == 0] #neighbor.alienPop doesnt have to be zero - does it. Invade all possible cities
+        neighborsToInvade = [neighbor for neighbor in explore.neighbors if neighbor not in frontier and neighbor not in explored] #neighbor.alienPop doesnt have to be zero - does it. Invade all possible cities
 
         #aliens get divided in neighboring cities
         aliensToDisperse = totalDispersable // len(neighborsToInvade) if neighborsToInvade else 0
@@ -104,14 +96,15 @@ def bfs(graph, total_aliens, source_city):
                 explore.alienPop -= aliensToDisperse
 
             if goalTest(neighbor) == True:
-                print("ALIENS HAVE REACHED ALEXANDRIA!!")
+                neighbor.alienArrival(aliensToDisperse)
+                explore.alienPop-=aliensToDisperse
+                print(aliensToDisperse,"ALIENS HAVE REACHED ALEXANDRIA!!")
                 return True
 
             frontier.append(neighbor)
         
         print(f"{explore.alienPop} aliens have remained in {explore.name}")
-#total aliens=100
-# bfs(graph, 1000)
+
 
 
 def calcHeuristics(city, inventoryExtra):
@@ -174,13 +167,13 @@ def save_cities(graph, start_city):
 def runSimulation(graph, start_city):
     print("!---------------------ALERT------------------------!")
     print("~~~~~~~Alien ships spotted!!!~~~~~~")
-    numLocations= random.randint(2, 10)
+    numLocations= random.randint(2, 5)
     spawnLoc={}
     for i in range (numLocations):
         while True : 
             loc=random.choice(list(graph.cities.values())) #select 5 random locations from the given list where aliens will spawn 
             if loc not in spawnLoc :
-                spawnLoc[loc]=random.randint(5,5000)
+                spawnLoc[loc]=random.randint(5,2000)
                 print(spawnLoc[loc], "Aliens landed in ", loc.name)
                 break
     print("!---------------------ALERT------------------------!")
